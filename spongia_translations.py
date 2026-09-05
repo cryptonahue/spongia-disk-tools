@@ -51,6 +51,11 @@ MESSAGES = {
         "en": "#   Size       File",
         "pt": "#   Tamanho    Arquivo",
     },
+    "extension_help": {
+        "es": "Extensión a incluir; se puede repetir (ej: .iso, zip)",
+        "en": "Extension to include; may be repeated (e.g. .iso, zip)",
+        "pt": "Extensão a incluir; pode ser repetida (ex.: .iso, zip)",
+    },
     "exclude_help": {
         "es": "Patrón a excluir; se puede repetir (ej: .git, *.pyc)",
         "en": "Pattern to exclude; may be repeated (e.g. .git, *.pyc)",

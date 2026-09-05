@@ -99,10 +99,19 @@ def is_excluded(path, patterns):
     return any(fnmatch.fnmatch(candidate, pattern) for pattern in patterns for candidate in candidates)
 
 
+def matches_extension(path, extensions):
+    """Return True when a file matches one of the requested extensions."""
+    if not extensions:
+        return True
+    suffix = Path(path).suffix.lower()
+    normalized = {ext.lower() if ext.startswith(".") else f".{ext.lower()}" for ext in extensions}
+    return suffix in normalized
+
+
 # ---------------------------------------------------------------------------
 # Subcomando: find — archivos pesados
 # ---------------------------------------------------------------------------
-def find_largest_files(directory, top_n=20, min_size_mb=10, lang="en", excludes=()):
+def find_largest_files(directory, top_n=20, min_size_mb=10, lang="en", excludes=(), extensions=()):
     """Encuentra los N archivos más pesados ≥ min_size usando un heap."""
     root = Path(directory).resolve()
     if not root.is_dir():
@@ -162,7 +171,7 @@ def find_largest_files(directory, top_n=20, min_size_mb=10, lang="en", excludes=
     print(f"{Colores.AZUL}{text(lang, 'total_listed', size=format_size(total))}{Colores.RESET}")
 
 
-def find_largest_dirs(directory, top_n=15, lang="en", excludes=()):
+def find_largest_dirs(directory, top_n=15, lang="en", excludes=(), min_size_mb=0, extensions=()):
     """Muestra las carpetas de un nivel con mayor tamaño total."""
     root = Path(directory).resolve()
     if not root.is_dir():
@@ -175,10 +184,17 @@ def find_largest_dirs(directory, top_n=15, lang="en", excludes=()):
     def dir_size(path):
         total = 0
         try:
-            for dirpath, _, filenames in os.walk(path):
+            for dirpath, dirnames, filenames in os.walk(path):
+                dirnames[:] = [name for name in dirnames
+                               if not is_excluded(Path(dirpath) / name, excludes)]
                 for name in filenames:
+                    file_path = Path(dirpath) / name
+                    if is_excluded(file_path, excludes) or not matches_extension(file_path, extensions):
+                        continue
                     try:
-                        total += os.path.getsize(os.path.join(dirpath, name))
+                        size = file_path.stat().st_size
+                        if size >= min_size_mb * 1024 * 1024:
+                            total += size
                     except OSError:
                         pass
         except OSError:
@@ -186,13 +202,15 @@ def find_largest_dirs(directory, top_n=15, lang="en", excludes=()):
         return total
 
     for entry in root.iterdir():
+        if is_excluded(entry, excludes):
+            continue
         if entry.is_dir():
             print(text(lang, "analyzing", name=entry.name))
             items.append((dir_size(entry), entry.name))
-        elif entry.is_file():
+        elif entry.is_file() and matches_extension(entry, extensions):
             try:
                 size = entry.stat().st_size
-                if size > 100 * 1024 * 1024:  # archivos > 100MB
+                if size >= min_size_mb * 1024 * 1024:
                     items.append((size, entry.name))
             except OSError:
                 pass
@@ -337,9 +355,9 @@ def main(argv=None):
             parser.error(text(lang, "top_invalid", value=args.top))
         min_mb = min_bytes / (1024 * 1024)
         if args.mode == "dirs":
-            find_largest_dirs(args.dir, top_n=args.top, lang=lang, excludes=args.exclude)
+            find_largest_dirs(args.dir, top_n=args.top, lang=lang, excludes=args.exclude, min_size_mb=min_mb, extensions=args.extension)
         else:
-            find_largest_files(args.dir, top_n=args.top, min_size_mb=min_mb, lang=lang, excludes=args.exclude)
+            find_largest_files(args.dir, top_n=args.top, min_size_mb=min_mb, lang=lang, excludes=args.exclude, extensions=args.extension)
         return 0
 
     if args.command == "remove":

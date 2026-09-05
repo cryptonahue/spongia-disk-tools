@@ -10,19 +10,19 @@ Analiza un directorio y muestra los elementos más grandes, con control de tama�
 
 ```bash
 # Archivos más pesados (≥ 10MB), top 20
-python spongia.py find
+spongia find
 
 # Directorio específico
-python spongia.py find --dir D:\Descargas
+spongia find --dir D:\Descargas
 
 # Tamaño mínimo personalizado
-python spongia.py find --dir . --min-size 100MB
+spongia find --dir . --min-size 100MB
 
 # Mostrar las carpetas más pesadas (no archivos)
-python spongia.py find dirs --dir .
+spongia find dirs --dir .
 
 # Más o menos resultados
-python spongia.py find --dir . --top 50
+spongia find --dir . --top 50
 ```
 
 ### 🗑️ `remove` — Borra archivos que no se pueden borrar
@@ -31,16 +31,16 @@ Envía archivos/carpetas a la **papelera** (seguro) o los borra permanentemente.
 
 ```bash
 # Borrar a la papelera (con confirmación)
-python spongia.py remove archivo_locked.pdf
+spongia remove archivo_locked.pdf
 
 # Borrar una carpeta (recursivo)
-python spongia.py remove ./carpeta -r
+spongia remove ./carpeta -r
 
 # Borrado PERMANENTE (sin papelera)
-python spongia.py remove archivo.txt --permanent
+spongia remove archivo.txt --permanent
 
 # Sin confirmación (scripting)
-python spongia.py remove archivo.txt -f
+spongia remove archivo.txt -f
 ```
 
 > ⚠️ **Seguridad**: el borrado siempre pide confirmación salvo con `-f/--force`, y rechaza borrar directorios del sistema o tu perfil de usuario.
@@ -48,7 +48,9 @@ python spongia.py remove archivo.txt -f
 ## 🚀 Instalación
 
 ```bash
-pip install -r requirements.txt
+pip install .
+    # Papelera de Windows (opcional)
+    pip install ".[trash]"
 ```
 
 ### Dependencias

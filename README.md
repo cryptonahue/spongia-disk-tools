@@ -2,95 +2,123 @@
 
 [![Tests](https://github.com/cryptonahue/spongia-disk-tools/actions/workflows/tests.yml/badge.svg)](https://github.com/cryptonahue/spongia-disk-tools/actions/workflows/tests.yml)
 
+Command-line tools to analyze disk usage and safely remove files and folders.
+
 Current release: **0.1.0**. See [CHANGELOG.md](CHANGELOG.md) for the release history.
 
+## Features
 
+- Find the largest files in a directory.
+- Find the largest top-level folders.
+- Send files and folders to the system trash.
+- Permanently delete files only when explicitly requested.
+- Protect the user profile and system directories.
+- Require `--recursive` before deleting folders.
+- Exclude files or folders with repeatable glob patterns.
+- English, Spanish, and Brazilian Portuguese messages.
 
-Utilidades de línea de comandos para **analizar el espacio en disco** y **liberar archivos bloqueados**. Una sola herramienta con dos subcomandos.
+## Usage
 
-## ✨ Subcomandos
-
-### 🔍 `find` — Encuentra archivos y carpetas pesadas
-
-Analiza un directorio y muestra los elementos más grandes, con control de tamaño mínimo y cantidad de resultados.
+### Find large files
 
 ```bash
-# Archivos más pesados (≥ 10MB), top 20
+# Files of at least 10 MB, top 20
 spongia find
 
-# Directorio específico
-spongia find --dir D:\Descargas
+# Analyze a specific directory
+spongia find --dir D:\Downloads
 
-# Tamaño mínimo personalizado
-spongia find --dir . --min-size 100MB
+# Custom minimum size and result count
+spongia find --dir . --min-size 100MB --top 50
 
-# Mostrar las carpetas más pesadas (no archivos)
+# Find the largest top-level folders
 spongia find dirs --dir .
 
-# Más o menos resultados
-spongia find --dir . --top 50
+# Exclude folders or files; --exclude can be repeated
+spongia find --dir . --exclude .git --exclude "*.pyc"
 ```
 
-### 🗑️ `remove` — Borra archivos que no se pueden borrar
+### Remove files and folders
 
-Envía archivos/carpetas a la **papelera** (seguro) o los borra permanentemente. Útil para liberar archivos bloqueados o sin permisos.
+By default, Spongia sends the target to the system trash and asks for confirmation.
 
 ```bash
-# Borrar a la papelera (con confirmación)
-spongia remove archivo_locked.pdf
+# Send a file to the trash
+spongia remove locked_file.pdf
 
-# Borrar una carpeta (recursivo)
-spongia remove ./carpeta -r
+# Send a folder to the trash
+spongia remove ./folder --recursive
 
-# Borrado PERMANENTE (sin papelera)
-spongia remove archivo.txt --permanent
+# Permanently delete a file
+spongia remove file.txt --permanent
 
-# Sin confirmación (scripting)
-spongia remove archivo.txt -f
+# Skip confirmation (use with care)
+spongia remove file.txt --force
 ```
 
-> ⚠️ **Seguridad**: el borrado siempre pide confirmación salvo con `-f/--force`, y rechaza borrar directorios del sistema o tu perfil de usuario.
+> ⚠️ **Safety:** confirmation is required unless `--force` is used. The user profile, the Windows directory, and their descendants are protected. Install `send2trash` to enable safe trash operations.
 
-## 🚀 Instalación
+## Installation
+
+### From the repository
 
 ```bash
 pip install .
-    # Papelera de Windows (opcional)
-    pip install ".[trash]"
 ```
 
-### Dependencias
+### Optional trash support
 
-| Paquete | Necesario para | 
-|---------|----------------|
-| `send2trash` | Borrado seguro a la papelera (opcional) |
+```bash
+pip install ".[trash]"
+```
 
-## ⚙️ Argumentos
+### Development tests
+
+```bash
+python -m unittest discover -s . -p "test_*.py" -v
+```
+
+## Dependencies
+
+| Package | Required for |
+| --- | --- |
+| `send2trash` | Sending files to the system trash (optional) |
+
+## Command reference
 
 ### `find`
-| Argumento | Default | Descripción |
-|-----------|---------|-------------|
-| `mode` | `files` | `files` (archivos) o `dirs` (carpetas) |
-| `--dir, -d` | `.` | Directorio a analizar |
-| `--min-size` | `10MB` | Tamaño mínimo (ej: `50MB`, `1GB`) |
-| `--top` | `20` | Cantidad de resultados |
+
+| Argument | Default | Description |
+| --- | --- | --- |
+| `mode` | `files` | `files` for files or `dirs` for folders |
+| `--dir, -d` | `.` | Directory to analyze |
+| `--min-size` | `10MB` | Minimum file size, such as `50MB` or `1GB` |
+| `--top` | `20` | Number of results |
+| `--exclude` | — | Exclusion pattern; can be repeated |
+| `--lang, -L` | `en` | `en`, `es`, or `pt` |
 
 ### `remove`
-| Argumento | Default | Descripción |
-|-----------|---------|-------------|
-| `ruta` | — | Archivo o carpeta a borrar |
-| `--recursive, -r` | off | Permite borrar carpetas |
-| `--permanent` | off | Borrado permanente (no papelera) |
-| `--force, -f` | off | Omite la confirmación |
 
-## 📁 Estructura
+| Argument | Default | Description |
+| --- | --- | --- |
+| `ruta` | — | File or folder to remove |
+| `--recursive, -r` | off | Allow folder removal |
+| `--permanent` | off | Permanently delete instead of using the trash |
+| `--force, -f` | off | Skip confirmation |
+| `--lang, -L` | `en` | `en`, `es`, or `pt` |
 
+## Project files
+
+```text
+spongia.py          # CLI and application logic
+translations.py     # English, Spanish, and Portuguese messages
+test_spongia.py     # Unit tests
+pyproject.toml      # Package configuration
+requirements.txt    # Optional dependency list
+CHANGELOG.md        # Release history
+LICENSE             # MIT license
 ```
-spongia.py       # CLI principal (toda la lógica)
-requirements.txt # Dependencias
-LICENSE          # MIT
-```
 
-## 📄 Licencia
+## License
 
-MIT — ver [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).

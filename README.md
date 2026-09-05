@@ -2,6 +2,10 @@
 
 [![Tests](https://github.com/cryptonahue/spongia-disk-tools/actions/workflows/tests.yml/badge.svg)](https://github.com/cryptonahue/spongia-disk-tools/actions/workflows/tests.yml)
 
+Current release: **0.1.0**. See [CHANGELOG.md](CHANGELOG.md) for the release history.
+
+
+
 Utilidades de línea de comandos para **analizar el espacio en disco** y **liberar archivos bloqueados**. Una sola herramienta con dos subcomandos.
 
 ## ✨ Subcomandos

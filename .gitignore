@@ -1,0 +1,16 @@
+# Entorno Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# IDEs / editores
+.vscode/
+.idea/
+.claude/
+
+# SO
+.DS_Store
+Thumbs.db

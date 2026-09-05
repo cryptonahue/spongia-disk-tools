@@ -1,0 +1,2 @@
+# send2trash es OPCIONAL: habilita el borrado seguro a la papelera de Windows.
+send2trash>=1.8

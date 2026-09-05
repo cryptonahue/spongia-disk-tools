@@ -2,6 +2,13 @@
 
 All notable changes to Spongia are documented here.
 
+## [0.1.1] - 2026-09-05
+
+### Fixed
+
+- Avoided collisions with `translations.py` modules from sibling projects by using the unique `spongia_translations.py` module name.
+- Fixed the installed `spongia` entry point on environments containing multiple Python projects.
+
 ## [0.1.0] - 2026-09-05
 
 ### Added

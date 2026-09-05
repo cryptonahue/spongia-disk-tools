@@ -4,7 +4,7 @@
 
 Command-line tools to analyze disk usage and safely remove files and folders.
 
-Current release: **0.1.0**. See [CHANGELOG.md](CHANGELOG.md) for the release history.
+Current release: **0.1.1**. See [CHANGELOG.md](CHANGELOG.md) for the release history.
 
 ## Features
 

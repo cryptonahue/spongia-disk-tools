@@ -117,6 +117,7 @@ def find_largest_files(directory, top_n=20, min_size_mb=10, lang="en", excludes=
     print(f"{Colores.MAGENTA}{text(lang, 'directory', dir=root)}{Colores.RESET}")
     inicio = time.time()
 
+    last_report = time.monotonic()
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = [name for name in dirnames
                        if not is_excluded(Path(dirpath) / name, excludes)]
@@ -124,6 +125,10 @@ def find_largest_files(directory, top_n=20, min_size_mb=10, lang="en", excludes=
             if is_excluded(Path(dirpath) / name, excludes):
                 continue
             files_checked += 1
+            now = time.monotonic()
+            if files_checked == 1 or now - last_report >= 1:
+                print(f"\r{Colores.CIAN}{text(lang, 'scan_progress', files=files_checked, dir=dirpath)}{Colores.RESET}", end="", flush=True)
+                last_report = now
             filepath = os.path.join(dirpath, name)
             try:
                 size = os.path.getsize(filepath)
@@ -135,6 +140,7 @@ def find_largest_files(directory, top_n=20, min_size_mb=10, lang="en", excludes=
                 elif size > heap[0][0]:
                     heapq.heappushpop(heap, (size, filepath))
 
+    print(f"\r{Colores.VERDE}{text(lang, 'scan_complete', files=files_checked)}{Colores.RESET}")
     top = sorted(heap, key=lambda x: x[0], reverse=True)
     elapsed = time.time() - inicio
 

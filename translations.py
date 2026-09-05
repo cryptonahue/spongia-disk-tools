@@ -66,6 +66,16 @@ MESSAGES = {
         "en": "❌ Directory does not exist: {dir}",
         "pt": "❌ Diretório não existe: {dir}",
     },
+    "scan_progress": {
+        "es": "🔄 Revisados: {files} archivos | Carpeta: {dir}",
+        "en": "🔄 Checked: {files} files | Directory: {dir}",
+        "pt": "🔄 Verificados: {files} arquivos | Pasta: {dir}",
+    },
+    "scan_complete": {
+        "es": "✅ Escaneo terminado: {files} archivos revisados.",
+        "en": "✅ Scan complete: {files} files checked.",
+        "pt": "✅ Varredura concluída: {files} arquivos verificados.",
+    },
     "searching_files": {
         "es": "🔍 Buscando archivos pesados ≥ {min} MB...",
         "en": "🔍 Searching heavy files ≥ {min} MB...",

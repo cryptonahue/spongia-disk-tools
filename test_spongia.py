@@ -1,7 +1,8 @@
+import io
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from contextlib import redirect_stdout
 
 import spongia
 
@@ -73,6 +74,22 @@ class SpongiaTests(unittest.TestCase):
     def test_parse_size_rejects_unknown_unit(self):
         with self.assertRaises(ValueError):
             spongia.parse_size("10XB")
+
+    def test_is_excluded_matches_names_and_globs(self):
+        self.assertTrue(spongia.is_excluded(Path("build/cache/file.pyc"), ["build"]))
+        self.assertTrue(spongia.is_excluded(Path("build/cache/file.pyc"), ["*.pyc"]))
+        self.assertFalse(spongia.is_excluded(Path("src/main.py"), ["*.pyc"]))
+
+    def test_find_largest_files_applies_exclusions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "included.bin").write_bytes(b"x" * 1024)
+            (root / "ignored.pyc").write_bytes(b"x" * 2048)
+            output = io.StringIO()
+            with redirect_stdout(output):
+                spongia.find_largest_files(root, min_size_mb=0, excludes=["*.pyc"])
+            self.assertIn("included.bin", output.getvalue())
+            self.assertNotIn("ignored.pyc", output.getvalue())
 
 
 if __name__ == "__main__":

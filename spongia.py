@@ -22,6 +22,7 @@ Idiomas soportados (--lang | -L): es, en, pt (default: en)
 """
 
 import argparse
+import fnmatch
 import heapq
 import os
 import sys
@@ -91,10 +92,17 @@ def parse_size(text: str) -> int:
     return int(float(text))
 
 
+def is_excluded(path, patterns):
+    """Return True when a file or directory matches an exclusion pattern."""
+    path = Path(path)
+    candidates = {path.name, str(path), path.as_posix(), *path.parts}
+    return any(fnmatch.fnmatch(candidate, pattern) for pattern in patterns for candidate in candidates)
+
+
 # ---------------------------------------------------------------------------
 # Subcomando: find — archivos pesados
 # ---------------------------------------------------------------------------
-def find_largest_files(directory, top_n=20, min_size_mb=10, lang="en"):
+def find_largest_files(directory, top_n=20, min_size_mb=10, lang="en", excludes=()):
     """Encuentra los N archivos más pesados ≥ min_size usando un heap."""
     root = Path(directory).resolve()
     if not root.is_dir():
@@ -110,7 +118,11 @@ def find_largest_files(directory, top_n=20, min_size_mb=10, lang="en"):
     inicio = time.time()
 
     for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [name for name in dirnames
+                       if not is_excluded(Path(dirpath) / name, excludes)]
         for name in filenames:
+            if is_excluded(Path(dirpath) / name, excludes):
+                continue
             files_checked += 1
             filepath = os.path.join(dirpath, name)
             try:
@@ -144,7 +156,7 @@ def find_largest_files(directory, top_n=20, min_size_mb=10, lang="en"):
     print(f"{Colores.AZUL}{text(lang, 'total_listed', size=format_size(total))}{Colores.RESET}")
 
 
-def find_largest_dirs(directory, top_n=15, lang="en"):
+def find_largest_dirs(directory, top_n=15, lang="en", excludes=()):
     """Muestra las carpetas de un nivel con mayor tamaño total."""
     root = Path(directory).resolve()
     if not root.is_dir():
@@ -288,10 +300,12 @@ def main(argv=None):
     find_p.add_argument("--dir", "-d", default=".", help=text("en", "dir_help"))
     find_p.add_argument("--min-size", type=str, default="10MB", help=text("en", "min_size_help"))
     find_p.add_argument("--top", type=int, default=20, help=text("en", "top_help"))
+    find_p.add_argument("--exclude", action="append", default=[],
+        help=text("en", "exclude_help"))
     find_p.add_argument("mode", nargs="?", default="files", choices=["files", "dirs"],
-    help=text("en", "mode_help"))
+                        help=text("en", "mode_help"))
     find_p.add_argument("--lang", "-L", default="en", choices=sorted(SUPPORTED_LANGS.keys()),
-    help=text("en", "lang_help"))
+                        help=text("en", "lang_help"))
 
     # remove
     rm_p = subparsers.add_parser("remove", help=text("en", "desc_remove"))
@@ -300,7 +314,7 @@ def main(argv=None):
     rm_p.add_argument("--permanent", action="store_true", help=text("en", "permanent_help"))
     rm_p.add_argument("--force", "-f", action="store_true", help=text("en", "force_help"))
     rm_p.add_argument("--lang", "-L", default="en", choices=sorted(SUPPORTED_LANGS.keys()),
-    help=text("en", "lang_help"))
+                           help=text("en", "lang_help"))
 
     args = parser.parse_args(argv)
 
@@ -317,9 +331,9 @@ def main(argv=None):
             parser.error(text(lang, "top_invalid", value=args.top))
         min_mb = min_bytes / (1024 * 1024)
         if args.mode == "dirs":
-            find_largest_dirs(args.dir, top_n=args.top, lang=lang)
+            find_largest_dirs(args.dir, top_n=args.top, lang=lang, excludes=args.exclude)
         else:
-            find_largest_files(args.dir, top_n=args.top, min_size_mb=min_mb, lang=lang)
+            find_largest_files(args.dir, top_n=args.top, min_size_mb=min_mb, lang=lang, excludes=args.exclude)
         return 0
 
     if args.command == "remove":

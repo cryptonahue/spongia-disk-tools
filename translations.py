@@ -51,6 +51,11 @@ MESSAGES = {
         "en": "#   Size       File",
         "pt": "#   Tamanho    Arquivo",
     },
+    "exclude_help": {
+        "es": "Patrón a excluir; se puede repetir (ej: .git, *.pyc)",
+        "en": "Pattern to exclude; may be repeated (e.g. .git, *.pyc)",
+        "pt": "Padrão a excluir; pode ser repetido (ex.: .git, *.pyc)",
+    },
     "top_invalid": {
             "es": "--top debe ser mayor que cero: {value}",
             "en": "--top must be greater than zero: {value}",

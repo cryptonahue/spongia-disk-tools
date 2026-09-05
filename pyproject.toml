@@ -23,4 +23,4 @@ tests = ["pytest>=8"]
 spongia = "spongia:main"
 
 [tool.setuptools]
-py-modules = ["spongia", "translations"]
+py-modules = ["spongia", "spongia_translations"]

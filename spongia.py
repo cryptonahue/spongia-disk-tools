@@ -37,7 +37,7 @@ if sys.platform == "win32":
         except Exception:
             pass
 
-from translations import confirm_si, text  # noqa: E402
+from spongia_translations import confirm_si, text  # noqa: E402
 
 SUPPORTED_LANGS = {
     "es": "es", "español": "es", "spanish": "es",

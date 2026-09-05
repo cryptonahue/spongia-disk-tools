@@ -111,7 +111,7 @@ python -m unittest discover -s . -p "test_*.py" -v
 
 ```text
 spongia.py          # CLI and application logic
-translations.py     # English, Spanish, and Portuguese messages
+spongia_translations.py     # English, Spanish, and Portuguese messages
 test_spongia.py     # Unit tests
 pyproject.toml      # Package configuration
 requirements.txt    # Optional dependency list

@@ -19,6 +19,16 @@ Current release: **0.1.1**. See [CHANGELOG.md](CHANGELOG.md) for the release his
 
 ## Usage
 
+Running `spongia` without arguments opens a guided interactive menu. It asks
+for the language (Spanish, English, or Portuguese) and uses Spanish by default.
+Press `Ctrl+C` during a scan to cancel safely. The command-line subcommands
+remain available for scripted and non-interactive use.
+
+```bash
+# Open the interactive menu
+spongia
+```
+
 ### Find large files
 
 ```bash
@@ -43,6 +53,9 @@ spongia find --dir . --exclude .git --exclude "*.pyc"
 By default, Spongia sends the target to the system trash and asks for confirmation.
 
 ```bash
+# Select results interactively and send them to the trash
+spongia find --dir . --interactive
+
 # Send a file to the trash
 spongia remove locked_file.pdf
 
@@ -95,6 +108,8 @@ python -m unittest discover -s . -p "test_*.py" -v
 | `--min-size` | `10MB` | Minimum file size, such as `50MB` or `1GB` |
 | `--top` | `20` | Number of results |
 | `--exclude` | — | Exclusion pattern; can be repeated |
+| `--extension` | — | File extension to include; can be repeated |
+| `--interactive` | off | Select displayed results for the trash |
 | `--lang, -L` | `en` | `en`, `es`, or `pt` |
 
 ### `remove`

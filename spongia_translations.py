@@ -1,7 +1,6 @@
-# -*- coding: utf-8 -*-
+"""Traducciones para Spongia (español, inglés, portugués de Brasil)."""
 
 import unicodedata
-"""Traducciones para Spongia (español, inglés, portugués de Brasil)."""
 
 MESSAGES = {
     # Descripción general
@@ -16,6 +15,66 @@ MESSAGES = {
         "pt": "Apaga arquivos/pastas (para a lixeira)",
     },
     # find
+    "menu_title": {
+        "es": "🧽 Spongia — liberar espacio en disco",
+        "en": "🧽 Spongia — free disk space",
+        "pt": "🧽 Spongia — liberar espaço em disco",
+    },
+    "menu_files": {
+        "es": "Buscar archivos más pesados",
+        "en": "Find largest files",
+        "pt": "Buscar arquivos maiores",
+    },
+    "menu_dirs": {
+        "es": "Buscar carpetas más pesadas",
+        "en": "Find largest folders",
+        "pt": "Buscar pastas maiores",
+    },
+    "menu_exit": {
+        "es": "Salir",
+        "en": "Exit",
+        "pt": "Sair",
+    },
+    "menu_choice": {
+        "es": "Elegí una opción: ",
+        "en": "Choose an option: ",
+        "pt": "Escolha uma opção: ",
+    },
+    "menu_dir": {
+        "es": "Directorio [.]: ",
+        "en": "Directory [.]: ",
+        "pt": "Diretório [.]: ",
+    },
+    "menu_min_size": {
+        "es": "Tamaño mínimo [10MB]: ",
+        "en": "Minimum size [10MB]: ",
+        "pt": "Tamanho mínimo [10MB]: ",
+    },
+    "menu_top": {
+        "es": "Cantidad de resultados [20]: ",
+        "en": "Number of results [20]: ",
+        "pt": "Quantidade de resultados [20]: ",
+    },
+    "menu_invalid": {
+        "es": "Opción inválida.",
+        "en": "Invalid option.",
+        "pt": "Opção inválida.",
+    },
+    "menu_invalid_config": {
+        "es": "Configuración inválida; probá de nuevo.",
+        "en": "Invalid configuration; try again.",
+        "pt": "Configuração inválida; tente novamente.",
+    },
+    "menu_continue": {
+        "es": "Presioná Enter para volver al menú...",
+        "en": "Press Enter to return to the menu...",
+        "pt": "Pressione Enter para voltar ao menu...",
+    },
+    "menu_goodbye": {
+        "es": "Hasta luego.",
+        "en": "Goodbye.",
+        "pt": "Até logo.",
+    },
     "dir_help": {
         "es": "Directorio a analizar (default: .)",
         "en": "Directory to analyze (default: .)",
@@ -51,6 +110,26 @@ MESSAGES = {
         "en": "#   Size       File",
         "pt": "#   Tamanho    Arquivo",
     },
+    "interactive_help": {
+        "es": "Permite seleccionar resultados para enviarlos a la papelera",
+        "en": "Select results to send them to the trash",
+        "pt": "Permite selecionar resultados para enviá-los para a lixeira",
+    },
+    "interactive_question": {
+        "es": "Números a enviar a la papelera (ej: 1,3; Enter cancela): ",
+        "en": "Numbers to send to the trash (e.g. 1,3; Enter cancels): ",
+        "pt": "Números para enviar à lixeira (ex.: 1,3; Enter cancela): ",
+    },
+    "interactive_invalid": {
+        "es": "Selección inválida; no se borró nada.",
+        "en": "Invalid selection; nothing was deleted.",
+        "pt": "Seleção inválida; nada foi apagado.",
+    },
+    "interrupted": {
+        "es": "⏹️  Escaneo interrumpido. No se borró nada.",
+        "en": "⏹️  Scan interrupted. Nothing was deleted.",
+        "pt": "⏹️  Varredura interrompida. Nada foi apagado.",
+    },
     "extension_help": {
         "es": "Extensión a incluir; se puede repetir (ej: .iso, zip)",
         "en": "Extension to include; may be repeated (e.g. .iso, zip)",
@@ -62,11 +141,11 @@ MESSAGES = {
         "pt": "Padrão a excluir; pode ser repetido (ex.: .git, *.pyc)",
     },
     "top_invalid": {
-            "es": "--top debe ser mayor que cero: {value}",
-            "en": "--top must be greater than zero: {value}",
-            "pt": "--top deve ser maior que zero: {value}",
-        },
-        "dir_not_found": {
+        "es": "--top debe ser mayor que cero: {value}",
+        "en": "--top must be greater than zero: {value}",
+        "pt": "--top deve ser maior que zero: {value}",
+    },
+    "dir_not_found": {
         "es": "❌ Directorio no existe: {dir}",
         "en": "❌ Directory does not exist: {dir}",
         "pt": "❌ Diretório não existe: {dir}",
@@ -178,16 +257,16 @@ MESSAGES = {
         "pt": "Exclusão permanente",
     },
     "destination_trash": {
-            "es": "la papelera",
-            "en": "the trash",
-            "pt": "a lixeira",
-        },
-        "destination_permanent": {
-            "es": "PERDERLO para siempre",
-            "en": "PERMANENT deletion",
-            "pt": "PERDÊ-LO para sempre",
-        },
-        "confirm_question": {
+        "es": "la papelera",
+        "en": "the trash",
+        "pt": "a lixeira",
+    },
+    "destination_permanent": {
+        "es": "PERDERLO para siempre",
+        "en": "PERMANENT deletion",
+        "pt": "PERDÊ-LO para sempre",
+    },
+    "confirm_question": {
         "es": "¿Seguro que querés enviar '{name}' a {dest}? [s/N] ",
         "en": "Are you sure you want to send '{name}' to {dest}? [y/N] ",
         "pt": "Tem certeza que deseja enviar '{name}' para {dest}? [s/N] ",
@@ -237,8 +316,6 @@ MESSAGES = {
         "en": "Language: es, en, pt (default: en)",
         "pt": "Idioma: es, en, pt (padrão: en)",
     },
-
-
 }
 
 

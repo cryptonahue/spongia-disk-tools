@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Spongia — Disk Tools: análisis y limpieza de espacio en disco.
 
@@ -24,25 +23,36 @@ Idiomas soportados (--lang | -L): es, en, pt (default: en)
 import argparse
 import fnmatch
 import heapq
+import importlib.util
 import os
 import sys
 import time
+from contextlib import suppress
 from pathlib import Path
 
 # Forzar UTF-8 en consolas Windows para poder mostrar emojis/acentos
 if sys.platform == "win32":
     for stream in (sys.stdout, sys.stderr):
-        try:
-            stream.reconfigure(encoding="utf-8", errors="replace")
-        except Exception:
-            pass
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            with suppress(Exception):
+                reconfigure(encoding="utf-8", errors="replace")
 
 from spongia_translations import confirm_si, text  # noqa: E402
 
 SUPPORTED_LANGS = {
-    "es": "es", "español": "es", "spanish": "es",
-    "en": "en", "english": "en", "inglés": "en", "ingles": "en",
-    "pt": "pt", "pt-br": "pt", "pt_br": "pt", "brasil": "pt", "brazilian": "pt",
+    "es": "es",
+    "español": "es",
+    "spanish": "es",
+    "en": "en",
+    "english": "en",
+    "inglés": "en",
+    "ingles": "en",
+    "pt": "pt",
+    "pt-br": "pt",
+    "pt_br": "pt",
+    "brasil": "pt",
+    "brazilian": "pt",
 }
 
 
@@ -78,25 +88,32 @@ def format_size(size: float) -> str:
 
 def parse_size(text: str) -> int:
     """Convierte una cadena como '100MB' o '2GB' a bytes."""
-    text = text.strip().upper()
-    units = {
-        "B": 1,
-        "KB": 1024,
-        "MB": 1024 ** 2,
-        "GB": 1024 ** 3,
-        "TB": 1024 ** 4,
-    }
-    for unit, mult in sorted(units.items(), key=lambda x: len(x[0]), reverse=True):
-        if text.endswith(unit):
-            return int(float(text[: -len(unit)].strip()) * mult)
-    return int(float(text))
+    try:
+        text = text.strip().upper()
+        units = {
+            "B": 1,
+            "KB": 1024,
+            "MB": 1024**2,
+            "GB": 1024**3,
+            "TB": 1024**4,
+        }
+        for unit, mult in sorted(units.items(), key=lambda x: len(x[0]), reverse=True):
+            if text.endswith(unit):
+                return int(float(text[: -len(unit)].strip()) * mult)
+        return int(float(text))
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Invalid size: {text!r}") from exc
 
 
 def is_excluded(path, patterns):
     """Return True when a file or directory matches an exclusion pattern."""
     path = Path(path)
     candidates = {path.name, str(path), path.as_posix(), *path.parts}
-    return any(fnmatch.fnmatch(candidate, pattern) for pattern in patterns for candidate in candidates)
+    return any(
+        fnmatch.fnmatch(candidate, pattern)
+        for pattern in patterns
+        for candidate in candidates
+    )
 
 
 def matches_extension(path, extensions):
@@ -104,39 +121,105 @@ def matches_extension(path, extensions):
     if not extensions:
         return True
     suffix = Path(path).suffix.lower()
-    normalized = {ext.lower() if ext.startswith(".") else f".{ext.lower()}" for ext in extensions}
+    normalized = {
+        ext.lower() if ext.startswith(".") else f".{ext.lower()}" for ext in extensions
+    }
     return suffix in normalized
+
+
+def parse_selection(value, maximum):
+    """Parse comma-separated 1-based result numbers."""
+    selected = []
+    for token in value.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        try:
+            number = int(token)
+        except ValueError as exc:
+            raise ValueError from exc
+        if not 1 <= number <= maximum:
+            raise ValueError
+        if number not in selected:
+            selected.append(number)
+    return selected
+
+
+def interactive_remove(paths, lang="en"):
+    """Ask which displayed paths to send to the trash."""
+    if not paths:
+        return
+    try:
+        answer = input(text(lang, "interactive_question")).strip()
+        if not answer:
+            return
+        selected = parse_selection(answer, len(paths))
+    except (ValueError, EOFError):
+        print(f"{Colores.AMARILLO}{text(lang, 'interactive_invalid')}{Colores.RESET}")
+        return
+    except KeyboardInterrupt:
+        print(f"\n{Colores.AMARILLO}{text(lang, 'interrupted')}{Colores.RESET}")
+        return
+
+    for number in selected:
+        remove_path(
+            paths[number - 1],
+            to_trash=True,
+            force=False,
+            recursive=Path(paths[number - 1]).is_dir(),
+            lang=lang,
+        )
 
 
 # ---------------------------------------------------------------------------
 # Subcomando: find — archivos pesados
 # ---------------------------------------------------------------------------
-def find_largest_files(directory, top_n=20, min_size_mb=10, lang="en", excludes=(), extensions=()):
+def find_largest_files(
+    directory,
+    top_n=20,
+    min_size_mb: float = 10,
+    lang="en",
+    excludes=(),
+    extensions=(),
+    interactive=False,
+):
     """Encuentra los N archivos más pesados ≥ min_size usando un heap."""
     root = Path(directory).resolve()
     if not root.is_dir():
-        print(f"{Colores.ROJO}{text(lang, 'dir_not_found', dir=directory)}{Colores.RESET}")
+        print(
+            f"{Colores.ROJO}{text(lang, 'dir_not_found', dir=directory)}{Colores.RESET}"
+        )
         return
 
     min_bytes = min_size_mb * 1024 * 1024
     heap = []
     files_checked = 0
 
-    print(f"{Colores.CIAN}{text(lang, 'searching_files', min=min_size_mb)}{Colores.RESET}")
+    print(
+        f"{Colores.CIAN}{text(lang, 'searching_files', min=min_size_mb)}{Colores.RESET}"
+    )
     print(f"{Colores.MAGENTA}{text(lang, 'directory', dir=root)}{Colores.RESET}")
     inicio = time.time()
 
     last_report = time.monotonic()
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [name for name in dirnames
-                       if not is_excluded(Path(dirpath) / name, excludes)]
+        dirnames[:] = [
+            name for name in dirnames if not is_excluded(Path(dirpath) / name, excludes)
+        ]
         for name in filenames:
-            if is_excluded(Path(dirpath) / name, excludes):
+            file_path = Path(dirpath) / name
+            if is_excluded(file_path, excludes) or not matches_extension(
+                file_path, extensions
+            ):
                 continue
             files_checked += 1
             now = time.monotonic()
             if files_checked == 1 or now - last_report >= 1:
-                print(f"\r{Colores.CIAN}{text(lang, 'scan_progress', files=files_checked, dir=dirpath)}{Colores.RESET}", end="", flush=True)
+                print(
+                    f"\r{Colores.CIAN}{text(lang, 'scan_progress', files=files_checked, dir=dirpath)}{Colores.RESET}",
+                    end="",
+                    flush=True,
+                )
                 last_report = now
             filepath = os.path.join(dirpath, name)
             try:
@@ -149,14 +232,18 @@ def find_largest_files(directory, top_n=20, min_size_mb=10, lang="en", excludes=
                 elif size > heap[0][0]:
                     heapq.heappushpop(heap, (size, filepath))
 
-    print(f"\r{Colores.VERDE}{text(lang, 'scan_complete', files=files_checked)}{Colores.RESET}")
+    print(
+        f"\r{Colores.VERDE}{text(lang, 'scan_complete', files=files_checked)}{Colores.RESET}"
+    )
     top = sorted(heap, key=lambda x: x[0], reverse=True)
     elapsed = time.time() - inicio
 
     print(f"\n{Colores.AMARILLO}{'=' * 78}{Colores.RESET}")
-    print(f"{Colores.NEGRITA}{text(lang, 'top_title', n=len(top), time=elapsed, files=files_checked)}{Colores.RESET}")
+    print(
+        f"{Colores.NEGRITA}{text(lang, 'top_title', n=len(top), time=elapsed, files=files_checked)}{Colores.RESET}"
+    )
     print(f"{Colores.AMARILLO}{'=' * 78}{Colores.RESET}")
-    print(text(lang, 'table_header'))
+    print(text(lang, "table_header"))
 
     total = 0
     for i, (size, path) in enumerate(top, 1):
@@ -168,14 +255,29 @@ def find_largest_files(directory, top_n=20, min_size_mb=10, lang="en", excludes=
         print(f"{i:<3} {format_size(size):<10} {rel}")
 
     print(f"{Colores.AMARILLO}{'=' * 78}{Colores.RESET}")
-    print(f"{Colores.AZUL}{text(lang, 'total_listed', size=format_size(total))}{Colores.RESET}")
+    print(
+        f"{Colores.AZUL}{text(lang, 'total_listed', size=format_size(total))}{Colores.RESET}"
+    )
+
+    if interactive:
+        interactive_remove([path for _, path in top], lang=lang)
 
 
-def find_largest_dirs(directory, top_n=15, lang="en", excludes=(), min_size_mb=0, extensions=()):
+def find_largest_dirs(
+    directory,
+    top_n=15,
+    lang="en",
+    excludes=(),
+    min_size_mb: float = 0,
+    extensions=(),
+    interactive=False,
+):
     """Muestra las carpetas de un nivel con mayor tamaño total."""
     root = Path(directory).resolve()
     if not root.is_dir():
-        print(f"{Colores.ROJO}{text(lang, 'dir_not_found', dir=directory)}{Colores.RESET}")
+        print(
+            f"{Colores.ROJO}{text(lang, 'dir_not_found', dir=directory)}{Colores.RESET}"
+        )
         return
 
     items = []
@@ -185,11 +287,16 @@ def find_largest_dirs(directory, top_n=15, lang="en", excludes=(), min_size_mb=0
         total = 0
         try:
             for dirpath, dirnames, filenames in os.walk(path):
-                dirnames[:] = [name for name in dirnames
-                               if not is_excluded(Path(dirpath) / name, excludes)]
+                dirnames[:] = [
+                    name
+                    for name in dirnames
+                    if not is_excluded(Path(dirpath) / name, excludes)
+                ]
                 for name in filenames:
                     file_path = Path(dirpath) / name
-                    if is_excluded(file_path, excludes) or not matches_extension(file_path, extensions):
+                    if is_excluded(file_path, excludes) or not matches_extension(
+                        file_path, extensions
+                    ):
                         continue
                     try:
                         size = file_path.stat().st_size
@@ -215,14 +322,19 @@ def find_largest_dirs(directory, top_n=15, lang="en", excludes=(), min_size_mb=0
             except OSError:
                 pass
 
-
     items.sort(key=lambda x: x[0], reverse=True)
+    displayed = items[:top_n]
     print(f"\n{Colores.AMARILLO}{'=' * 78}{Colores.RESET}")
     print(f"{Colores.NEGRITA}{text(lang, 'dirs_title', name=root.name)}{Colores.RESET}")
     total = sum(s for s, _ in items)
-    for i, (size, name) in enumerate(items[:top_n], 1):
+    for i, (size, name) in enumerate(displayed, 1):
         print(f"{i:2}. {format_size(size):>12} - {name}")
-    print(f"\n{Colores.AZUL}{text(lang, 'total_size', size=format_size(total))}{Colores.RESET}")
+    print(
+        f"\n{Colores.AZUL}{text(lang, 'total_size', size=format_size(total))}{Colores.RESET}"
+    )
+
+    if interactive:
+        interactive_remove([str(root / name) for _, name in displayed], lang=lang)
 
 
 # ---------------------------------------------------------------------------
@@ -230,17 +342,24 @@ def find_largest_dirs(directory, top_n=15, lang="en", excludes=(), min_size_mb=0
 # ---------------------------------------------------------------------------
 def _puede_borrar_permisos(path: Path) -> bool:
     """Intenta comprobar si el archivo/carpeta es accesible para borrado."""
-    return os.access(path, os.W_OK)
+    try:
+        return os.access(path, os.W_OK)
+    except OSError:
+        return False
 
 
-def remove_path(ruta, to_trash=True, recursive=False, force=False,
-                protected_dirs=None, lang="en"): 
+def remove_path(
+    ruta, to_trash=True, recursive=False, force=False, protected_dirs=None, lang="en"
+):
     """
     Borra un archivo o carpeta. Por defecto va a la PAPELERA (seguro).
     force=True omite la confirmación interactiva.
     """
     if protected_dirs is None:
-        protected_dirs = [os.path.expanduser("~"), os.environ.get("SystemRoot", "C:\\Windows")]
+        protected_dirs = [
+            os.path.expanduser("~"),
+            os.environ.get("SYSTEMROOT", "C:\\Windows"),
+        ]
 
     target = Path(ruta).expanduser().absolute()
 
@@ -255,32 +374,47 @@ def remove_path(ruta, to_trash=True, recursive=False, force=False,
             continue
         protected_real = Path(prot).expanduser().resolve()
         if target_real == protected_real or protected_real in target_real.parents:
-            print(f"{Colores.ROJO}{text(lang, 'protected', dir=target_real)}{Colores.RESET}")
+            print(
+                f"{Colores.ROJO}{text(lang, 'protected', dir=target_real)}{Colores.RESET}"
+            )
             return 1
 
     if target.is_dir() and not target.is_symlink() and not recursive:
-        print(f"{Colores.AMARILLO}{text(lang, 'is_dir_warning', target=target)}{Colores.RESET}")
+        print(
+            f"{Colores.AMARILLO}{text(lang, 'is_dir_warning', target=target)}{Colores.RESET}"
+        )
         return 1
 
     print(f"{Colores.CIAN}{text(lang, 'target', target=target)}{Colores.RESET}")
     method_key = "method_trash" if to_trash else "method_permanent"
-    print(f"{Colores.CIAN}{text(lang, 'method', method=text(lang, method_key))}{Colores.RESET}")
+    print(
+        f"{Colores.CIAN}{text(lang, 'method', method=text(lang, method_key))}{Colores.RESET}"
+    )
 
     if not force:
         destination_key = "destination_trash" if to_trash else "destination_permanent"
-        confirmar = input(text(lang, "confirm_question", name=target.name,
-                               dest=text(lang, destination_key))).strip()
+        confirmar = input(
+            text(
+                lang,
+                "confirm_question",
+                name=target.name,
+                dest=text(lang, destination_key),
+            )
+        ).strip()
         if not confirm_si(confirmar, lang):
             print(f"{Colores.AMARILLO}{text(lang, 'cancelled')}{Colores.RESET}")
             return 0
 
     try:
         if to_trash:
-            try:
+            if importlib.util.find_spec("send2trash") is not None:
                 from send2trash import send2trash
+
                 send2trash(str(target))
-                print(f"{Colores.VERDE}{text(lang, 'trashed', target=target)}{Colores.RESET}")
-            except ImportError:
+                print(
+                    f"{Colores.VERDE}{text(lang, 'trashed', target=target)}{Colores.RESET}"
+                )
+            else:
                 print(f"{Colores.AMARILLO}{text(lang, 'no_send2trash')}{Colores.RESET}")
                 if not force:
                     c = input(text(lang, "confirm_permanent")).strip()
@@ -288,17 +422,23 @@ def remove_path(ruta, to_trash=True, recursive=False, force=False,
                         return 0
                 if target.is_dir() and not target.is_symlink():
                     import shutil
+
                     shutil.rmtree(target)
                 else:
                     target.unlink()
-                print(f"{Colores.VERDE}{text(lang, 'deleted_perm', target=target)}{Colores.RESET}")
+                print(
+                    f"{Colores.VERDE}{text(lang, 'deleted_perm', target=target)}{Colores.RESET}"
+                )
         else:
             if target.is_dir() and not target.is_symlink():
                 import shutil
+
                 shutil.rmtree(target)
             else:
                 target.unlink()
-            print(f"{Colores.VERDE}{text(lang, 'deleted_perm', target=target)}{Colores.RESET}")
+            print(
+                f"{Colores.VERDE}{text(lang, 'deleted_perm', target=target)}{Colores.RESET}"
+            )
         return 0
     except PermissionError:
         print(f"{Colores.ROJO}{text(lang, 'permission_denied')}{Colores.RESET}")
@@ -310,9 +450,109 @@ def remove_path(ruta, to_trash=True, recursive=False, force=False,
 
 
 # ---------------------------------------------------------------------------
+# TUI principal
+# ---------------------------------------------------------------------------
+def choose_menu_language():
+    """Ask for the language used by the guided menu."""
+    prompt = "Idioma / Language / Idioma [es/en/pt] (default: es): "
+    while True:
+        try:
+            value = input(prompt).strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return "es"
+        if not value:
+            return "es"
+        if value in SUPPORTED_LANGS:
+            return resolve_lang(value)
+        print("Idioma inválido. Elegí es, en o pt.")
+
+
+def print_interrupted(lang):
+    """Print a friendly cancellation message for Ctrl+C."""
+    print(f"\n{Colores.AMARILLO}{text(lang, 'interrupted')}{Colores.RESET}")
+
+
+def interactive_menu(lang=None):
+    """Show the guided disk-analysis menu used by bare ``spongia``."""
+    if lang is None:
+        lang = choose_menu_language()
+
+    while True:
+        print(
+            f"\n{Colores.CIAN}{Colores.NEGRITA}{text(lang, 'menu_title')}{Colores.RESET}"
+        )
+        print(f"  1. {text(lang, 'menu_files')}")
+        print(f"  2. {text(lang, 'menu_dirs')}")
+        print(f"  3. {text(lang, 'menu_exit')}")
+        try:
+            choice = input(text(lang, "menu_choice")).strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return 0
+
+        if choice == "3":
+            print(text(lang, "menu_goodbye"))
+            return 0
+        if choice not in ("1", "2"):
+            print(f"{Colores.AMARILLO}{text(lang, 'menu_invalid')}{Colores.RESET}")
+            continue
+
+        try:
+            directory = input(text(lang, "menu_dir")).strip() or "."
+            min_size_text = input(text(lang, "menu_min_size")).strip() or "10MB"
+            top_text = input(text(lang, "menu_top")).strip() or "20"
+            min_bytes = parse_size(min_size_text)
+            top_n = int(top_text)
+            if min_bytes < 0 or top_n < 1:
+                raise ValueError
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return 0
+        except (TypeError, ValueError):
+            print(
+                f"{Colores.AMARILLO}{text(lang, 'menu_invalid_config')}{Colores.RESET}"
+            )
+            continue
+
+        min_mb = min_bytes / (1024 * 1024)
+        try:
+            if choice == "1":
+                find_largest_files(
+                    directory,
+                    top_n=top_n,
+                    min_size_mb=min_mb,
+                    lang=lang,
+                    interactive=True,
+                )
+            else:
+                find_largest_dirs(
+                    directory,
+                    top_n=top_n,
+                    lang=lang,
+                    min_size_mb=min_mb,
+                    interactive=True,
+                )
+        except KeyboardInterrupt:
+            print_interrupted(lang)
+            return 130
+
+        try:
+            input(text(lang, "menu_continue"))
+        except (EOFError, KeyboardInterrupt):
+            print()
+            return 0
+
+
+# ---------------------------------------------------------------------------
 # CLI principal
 # ---------------------------------------------------------------------------
 def main(argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
+    if not argv:
+        return interactive_menu()
+
     parser = argparse.ArgumentParser(
         prog="spongia",
         description=text("en", "description"),
@@ -322,23 +562,53 @@ def main(argv=None):
     # find
     find_p = subparsers.add_parser("find", help=text("en", "desc_find"))
     find_p.add_argument("--dir", "-d", default=".", help=text("en", "dir_help"))
-    find_p.add_argument("--min-size", type=str, default="10MB", help=text("en", "min_size_help"))
+    find_p.add_argument(
+        "--min-size", type=str, default="10MB", help=text("en", "min_size_help")
+    )
     find_p.add_argument("--top", type=int, default=20, help=text("en", "top_help"))
-    find_p.add_argument("--exclude", action="append", default=[],
-        help=text("en", "exclude_help"))
-    find_p.add_argument("mode", nargs="?", default="files", choices=["files", "dirs"],
-                        help=text("en", "mode_help"))
-    find_p.add_argument("--lang", "-L", default="en", choices=sorted(SUPPORTED_LANGS.keys()),
-                        help=text("en", "lang_help"))
+    find_p.add_argument(
+        "--exclude", action="append", default=[], help=text("en", "exclude_help")
+    )
+    find_p.add_argument(
+        "--extension", action="append", default=[], help=text("en", "extension_help")
+    )
+    find_p.add_argument(
+        "--interactive", action="store_true", help=text("en", "interactive_help")
+    )
+    find_p.add_argument(
+        "mode",
+        nargs="?",
+        default="files",
+        choices=["files", "dirs"],
+        help=text("en", "mode_help"),
+    )
+    find_p.add_argument(
+        "--lang",
+        "-L",
+        default="en",
+        choices=sorted(SUPPORTED_LANGS.keys()),
+        help=text("en", "lang_help"),
+    )
 
     # remove
     rm_p = subparsers.add_parser("remove", help=text("en", "desc_remove"))
     rm_p.add_argument("ruta", help=text("en", "ruta_help"))
-    rm_p.add_argument("--recursive", "-r", action="store_true", help=text("en", "recursive_help"))
-    rm_p.add_argument("--permanent", action="store_true", help=text("en", "permanent_help"))
-    rm_p.add_argument("--force", "-f", action="store_true", help=text("en", "force_help"))
-    rm_p.add_argument("--lang", "-L", default="en", choices=sorted(SUPPORTED_LANGS.keys()),
-                           help=text("en", "lang_help"))
+    rm_p.add_argument(
+        "--recursive", "-r", action="store_true", help=text("en", "recursive_help")
+    )
+    rm_p.add_argument(
+        "--permanent", action="store_true", help=text("en", "permanent_help")
+    )
+    rm_p.add_argument(
+        "--force", "-f", action="store_true", help=text("en", "force_help")
+    )
+    rm_p.add_argument(
+        "--lang",
+        "-L",
+        default="en",
+        choices=sorted(SUPPORTED_LANGS.keys()),
+        help=text("en", "lang_help"),
+    )
 
     args = parser.parse_args(argv)
 
@@ -354,10 +624,30 @@ def main(argv=None):
         if args.top < 1:
             parser.error(text(lang, "top_invalid", value=args.top))
         min_mb = min_bytes / (1024 * 1024)
-        if args.mode == "dirs":
-            find_largest_dirs(args.dir, top_n=args.top, lang=lang, excludes=args.exclude, min_size_mb=min_mb, extensions=args.extension)
-        else:
-            find_largest_files(args.dir, top_n=args.top, min_size_mb=min_mb, lang=lang, excludes=args.exclude, extensions=args.extension)
+        try:
+            if args.mode == "dirs":
+                find_largest_dirs(
+                    args.dir,
+                    top_n=args.top,
+                    lang=lang,
+                    excludes=args.exclude,
+                    min_size_mb=min_mb,
+                    extensions=args.extension,
+                    interactive=args.interactive,
+                )
+            else:
+                find_largest_files(
+                    args.dir,
+                    top_n=args.top,
+                    min_size_mb=min_mb,
+                    lang=lang,
+                    excludes=args.exclude,
+                    extensions=args.extension,
+                    interactive=args.interactive,
+                )
+        except KeyboardInterrupt:
+            print_interrupted(lang)
+            return 130
         return 0
 
     if args.command == "remove":
@@ -374,5 +664,3 @@ def main(argv=None):
 
 if __name__ == "__main__":
     sys.exit(main())
-
-

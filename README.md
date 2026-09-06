@@ -79,10 +79,24 @@ spongia remove file.txt --force
 pip install .
 ```
 
-### Optional trash support
+### From GitHub (without cloning)
 
 ```bash
-pip install ".[trash]"
+python -m pip install "git+https://github.com/nahuweb/spongia-disk-tools.git"
+```
+
+### Optional trash support
+
+For a local checkout:
+
+```bash
+python -m pip install ".[trash]"
+```
+
+From GitHub, including trash support:
+
+```bash
+python -m pip install "spongia-disk-tools[trash] @ git+https://github.com/nahuweb/spongia-disk-tools.git"
 ```
 
 ### Development tests
